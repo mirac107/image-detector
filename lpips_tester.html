@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>LPIPS Duplicate-Check Demo</title>
+<style>
+  body{font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#111;color:#eee;display:flex;flex-direction:column;align-items:center;padding:2rem}
+  h1{margin-top:0;color:#0ff}
+  .panel{background:#222;padding:1.5rem;border-radius:12px;box-shadow:0 0 12px #000;width:360px}
+  label{display:block;margin-top:1rem}
+  button{margin-top:1.5rem;width:100%;padding:.6rem;border:none;border-radius:6px;background:#0ff;color:#000;font-weight:600;font-size:1rem;cursor:pointer}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  output{display:block;margin-top:1.5rem;font-size:1.1rem;text-align:center}
+  small{display:block;margin-top:.3rem;color:#aaa;font-size:.8rem}
+</style>
+</head>
+<body>
+  <h1>LPIPS Tester</h1>
+  <div class="panel">
+    <label>
+      Image 1:
+      <input type="file" id="img1" accept="image/*" />
+    </label>
+    <label>
+      Image 2:
+      <input type="file" id="img2" accept="image/*" />
+    </label>
+    <button id="go" disabled>Compare</button>
+    <output id="res"></output>
+  </div>
+
+<script>
+const img1 = document.getElementById('img1');
+const img2 = document.getElementById('img2');
+const go   = document.getElementById('go');
+const res  = document.getElementById('res');
+
+function ready(){ return img1.files.length && img2.files.length; }
+function setBtn(){ go.disabled = !ready(); }
+img1.addEventListener('change', setBtn);
+img2.addEventListener('change', setBtn);
+
+go.addEventListener('click', async () => {
+  res.textContent = '⏳ Scoring…';
+  const fd = new FormData();
+  fd.append('img1', img1.files[0]);
+  fd.append('img2', img2.files[0]);
+  try{
+    const r = await fetch('http://localhost:8088/score', { method:'POST', body:fd });
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const { lpips } = await r.json();
+    const verdict = lpips <= 0.06 ? 'Duplicate' 
+                  : lpips <= 0.08 ? 'Near-duplicate'
+                  : 'Different';
+    res.innerHTML = `<strong>LPIPS:</strong> ${lpips.toFixed(4)}<br>${verdict}`;
+  }catch(err){
+    res.textContent = '❌ Error: ' + err.message;
+  }
+});
+</script>
+</body>
+</html>
